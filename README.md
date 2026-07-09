@@ -57,4 +57,4 @@ The project has been initialized with a modular production-ready skeleton:
 - Monorepo structuring with clear microservices.
 - Multi-stage Docker files for performant containers.
 - Environment variables and setup config placeholders.
-- Blank templates prepared for Auth, RAG engine, and Quiz evaluators.
+- Blank templates prepared for Auth, RAG engine, and Quiz engine.
