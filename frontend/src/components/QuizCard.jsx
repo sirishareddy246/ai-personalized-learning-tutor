@@ -11,8 +11,9 @@ export default function QuizCard({ question, index, selected, onSelect, revealed
         {question.options.map((opt, i) => {
           const letter = letters[i];
           const isSelected = selected === letter;
-          const isCorrect = revealed && letter === question.correct;
-          const isWrong = revealed && isSelected && letter !== question.correct;
+          const correctAnswer = question.correct || question.correct_answer;
+          const isCorrect = revealed && letter === correctAnswer;
+          const isWrong = revealed && isSelected && letter !== correctAnswer;
 
           return (
             <button

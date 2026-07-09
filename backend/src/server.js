@@ -5,6 +5,7 @@ const config = require('./config/config');
 const uploadRoutes = require('./routes/upload.routes');
 const askRoutes = require('./routes/ask.routes');
 const quizRoutes = require('./routes/quiz.routes');
+const adaptiveQuizRoutes = require('./routes/adaptiveQuiz.routes');
 const feedbackRoutes = require('./routes/feedback.routes');
 
 const app = express();
@@ -17,6 +18,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api', uploadRoutes);
 app.use('/api', askRoutes);
 app.use('/api', quizRoutes);
+app.use('/api/adaptive-quiz', adaptiveQuizRoutes);
 app.use('/api', feedbackRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));

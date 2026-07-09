@@ -14,19 +14,27 @@ if (!DB_URL || DB_URL.includes('[YOUR-PASSWORD]')) {
   process.exit(1);
 }
 
-const sql = fs.readFileSync(
-  path.join(__dirname, '..', '..', 'supabase', 'migrations', '001_init.sql'),
-  'utf8'
-);
+const migrationsDir = path.join(__dirname, '..', '..', 'supabase', 'migrations');
 
 async function migrate() {
   const client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } });
   try {
     console.log('🔌 Connecting to Supabase Postgres...');
     await client.connect();
-    console.log('✅ Connected. Running migration...');
-    await client.query(sql);
-    console.log('✅ Migration complete! Tables + pgvector enabled.');
+    console.log('✅ Connected. Fetching migrations...');
+
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    for (const file of files) {
+      console.log(`Running migration: ${file}...`);
+      const filePath = path.join(migrationsDir, file);
+      const sql = fs.readFileSync(filePath, 'utf8');
+      await client.query(sql);
+      console.log(`✅ Completed migration: ${file}`);
+    }
+    console.log('🎉 All migrations complete! Database is up to date.');
   } catch (err) {
     console.error('❌ Migration failed:', err.message);
     process.exit(1);
