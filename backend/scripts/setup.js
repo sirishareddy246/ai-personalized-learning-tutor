@@ -9,6 +9,7 @@
  *       paste supabase/migrations/001_init.sql into Supabase Dashboard → SQL Editor.
  */
 require('dotenv').config();
+global.WebSocket = require('ws');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
