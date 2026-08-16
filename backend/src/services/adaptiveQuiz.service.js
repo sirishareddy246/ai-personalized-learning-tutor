@@ -30,12 +30,13 @@ async function ensureQuestionPool(documentId) {
   if (!chunks?.length) throw new Error('No chunks found for document — has it finished processing?');
 
   const pool = await generateAllAdaptiveQuestions(chunks, 3);
+  const validChunkIds = new Set(chunks.map((c) => c.id));
 
   for (const level of LEVEL_ORDER) {
     const questions = pool[level] || [];
     const rows = questions.map((q) => ({
       document_id: documentId,
-      chunk_id: q.chunk_id || null,
+      chunk_id: q.chunk_id && validChunkIds.has(q.chunk_id) ? q.chunk_id : null,
       level,
       question: q.question,
       options: q.options,
@@ -134,31 +135,44 @@ async function submitAnswer(sessionId, questionId, selectedAnswer) {
     return { status: 'in_progress', isCorrect, explanation: question.explanation };
   }
 
-  return evaluateBatch(session);
+  const batchResult = await evaluateBatch(session);
+  return { ...batchResult, isCorrect, explanation: question.explanation };
 }
 
 async function isBatchComplete(sessionId, batchIds) {
   const { data: attempts, error } = await supabase
     .from('adaptive_quiz_attempts')
-    .select('question_id')
+    .select('question_id, answered_at')
     .eq('session_id', sessionId)
-    .in('question_id', batchIds);
+    .in('question_id', batchIds)
+    .order('answered_at', { ascending: false });
 
   if (error) throw error;
-  return attempts.length >= batchIds.length;
+  const uniqueAttemptedQuestionIds = new Set(attempts.map((a) => a.question_id));
+  return uniqueAttemptedQuestionIds.size >= batchIds.length;
 }
 
 async function evaluateBatch(session) {
   const { data: attempts, error } = await supabase
     .from('adaptive_quiz_attempts')
-    .select('is_correct')
+    .select('question_id, is_correct, answered_at')
     .eq('session_id', session.id)
-    .in('question_id', session.current_batch_ids);
+    .in('question_id', session.current_batch_ids)
+    .order('answered_at', { ascending: false });
 
   if (error) throw error;
 
-  const correctCount = attempts.filter((a) => a.is_correct).length;
-  const score = correctCount / attempts.length;
+  // Deduplicate attempts to get the latest attempt per question_id
+  const latestAttemptByQ = new Map();
+  for (const a of attempts) {
+    if (!latestAttemptByQ.has(a.question_id)) {
+      latestAttemptByQ.set(a.question_id, a);
+    }
+  }
+
+  const latestAttempts = Array.from(latestAttemptByQ.values());
+  const correctCount = latestAttempts.filter((a) => a.is_correct).length;
+  const score = correctCount / (latestAttempts.length || 1);
   const passed = score >= PASS_THRESHOLD;
 
   if (passed) {

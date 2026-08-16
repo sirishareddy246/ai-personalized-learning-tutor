@@ -1,6 +1,5 @@
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
-const officeParser = require('officeparser');
 const config = require('../config/config');
 
 async function extractText(fileBuffer, mimetype, originalname) {
@@ -17,6 +16,8 @@ async function extractText(fileBuffer, mimetype, originalname) {
   }
 
   if (ext === 'pptx' || ext === 'ppt') {
+    if (!process.argv[1]) process.argv[1] = '';
+    const officeParser = require('officeparser');
     return new Promise((resolve, reject) => {
       officeParser.parseOfficeAsync(fileBuffer, { outputErrorToConsole: false })
         .then(resolve)
