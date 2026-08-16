@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="16" fill="#F4F1EA" />
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#D8D3C6" stroke-width="2" />
+  <!-- Graduation cap base -->
+  <path d="M32 16 L52 25 L32 34 L12 25 Z" fill="#D97757" />
+  <!-- Cap underside / shadow -->
+  <path d="M20 30.5 V39.5 C20 44 25.3 47.5 32 47.5 C38.7 47.5 44 44 44 39.5 V30.5 L32 36 Z" fill="#C2643F" />
+  <!-- Tassel -->
+  <path d="M47 27.5 V38.5 L45 42 M49 42 L47 38.5 L47 27.5" stroke="#C79A3C" stroke-width="2" stroke-linecap="round" fill="none" />
+  <!-- Sparkle dot -->
+  <circle cx="47" cy="43" r="2" fill="#C79A3C" />
+</svg>
