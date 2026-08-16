@@ -1,35 +1,95 @@
 const axios = require('axios');
 const config = require('../config/config');
 
-// Determine if we are using Groq (gsk_...) or Grok (x.ai)
-const isGroq = config.grokApiKey && config.grokApiKey.startsWith('gsk_');
-const baseURL = isGroq ? 'https://api.groq.com/openai/v1' : config.grokBaseUrl;
-const defaultModel = isGroq ? 'llama-3.3-70b-versatile' : config.grokModel;
+const apiKey = config.grokApiKey || '';
+const isNvidia = apiKey.startsWith('nvapi-');
+const isGroq = apiKey.startsWith('gsk_');
 
-console.log(`🤖 Using LLM Provider: ${isGroq ? 'Groq (llama-3.3-70b-versatile)' : 'Grok (xAI)'}`);
+let baseURL = 'https://api.x.ai/v1';
+let defaultModel = 'grok-3';
+let fallbackModel = null;
+
+if (isNvidia) {
+  baseURL = 'https://integrate.api.nvidia.com/v1';
+  defaultModel = 'meta/llama-3.1-8b-instruct';
+  fallbackModel = 'meta/llama-3.1-8b-instruct';
+  console.log('🤖 Using LLM Provider: NVIDIA NIM API (meta/llama-3.1-8b-instruct)');
+} else if (isGroq) {
+  baseURL = 'https://api.groq.com/openai/v1';
+  defaultModel = 'llama-3.3-70b-versatile';
+  fallbackModel = 'llama-3.1-8b-instant';
+  console.log('🤖 Using LLM Provider: Groq (llama-3.3-70b-versatile with llama-3.1-8b-instant fallback)');
+} else {
+  console.log('🤖 Using LLM Provider: Grok (xAI)');
+}
 
 const llmClient = axios.create({
   baseURL,
   headers: {
-    Authorization: `Bearer ${config.grokApiKey}`,
+    Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
   },
   timeout: 60000,
 });
 
 async function chat(messages, options = {}) {
+  const modelToUse = options.model || defaultModel;
   try {
     const response = await llmClient.post('/chat/completions', {
-      model: options.model || defaultModel,
+      model: modelToUse,
       messages,
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens || 1500,
     });
     return response.data.choices[0].message.content;
   } catch (err) {
+    const isRateLimit =
+      err.response &&
+      (err.response.status === 429 ||
+        (err.response.data &&
+          err.response.data.error &&
+          (err.response.data.error.code === 'rate_limit_exceeded' ||
+            err.response.data.error.type === 'tokens')));
+
+    if (isRateLimit) {
+      if (fallbackModel && modelToUse !== fallbackModel) {
+        console.warn(`⚠️ Rate limit hit on ${modelToUse}. Automatically falling back to ${fallbackModel}...`);
+        try {
+          const fallbackResponse = await llmClient.post('/chat/completions', {
+            model: fallbackModel,
+            messages,
+            temperature: options.temperature ?? 0.7,
+            max_tokens: options.maxTokens || 1500,
+          });
+          return fallbackResponse.data.choices[0].message.content;
+        } catch (fallbackErr) {
+          console.error('Fallback model error:', fallbackErr.response?.data || fallbackErr.message);
+        }
+      }
+
+      console.warn('⚠️ Rate limit hit. Waiting 3 seconds before retrying...');
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      try {
+        const retryResponse = await llmClient.post('/chat/completions', {
+          model: fallbackModel || modelToUse,
+          messages,
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens || 1500,
+        });
+        return retryResponse.data.choices[0].message.content;
+      } catch (retryErr) {
+        if (retryErr.response && retryErr.response.data) {
+          console.error('LLM API Error after retry:', JSON.stringify(retryErr.response.data, null, 2));
+          const msg = retryErr.response.data.error?.message || 'Rate limit reached. Please try again in a few seconds.';
+          throw new Error(`LLM Rate Limit: ${msg}`);
+        }
+        throw retryErr;
+      }
+    }
+
     if (err.response && err.response.data) {
       console.error('LLM API Error:', JSON.stringify(err.response.data, null, 2));
-      throw new Error(`LLM API Error: ${JSON.stringify(err.response.data)}`);
+      throw new Error(`LLM API Error: ${err.response.data.error?.message || JSON.stringify(err.response.data)}`);
     }
     throw err;
   }
@@ -76,10 +136,9 @@ async function generateQuiz(contextChunks, difficulty = 'medium', numQuestions =
 }
 
 async function generateAllAdaptiveQuestions(chunks, countPerLevel = 3) {
-  // Limit to top 2 chunks and truncate each to 1200 characters to keep prompt size very small
-  const limitedChunks = chunks.slice(0, 2).map(c => ({
+  const limitedChunks = chunks.slice(0, 2).map((c) => ({
     id: c.id,
-    content: c.content ? c.content.substring(0, 1200) : ''
+    content: c.content ? c.content.substring(0, 1200) : '',
   }));
   const context = limitedChunks
     .map((c) => `[chunk_id: ${c.id}]\n${c.content}`)
@@ -124,13 +183,16 @@ Return ONLY a JSON object of this exact shape, with no other text, prose, or mar
   ]
 }`;
 
-  const raw = await chat([
-    { role: 'system', content: prompt },
-    { role: 'user', content: `Study Material:\n${context}` }
-  ], {
-    temperature: 0.4,
-    maxTokens: 2500
-  });
+  const raw = await chat(
+    [
+      { role: 'system', content: prompt },
+      { role: 'user', content: `Study Material:\n${context}` },
+    ],
+    {
+      temperature: 0.4,
+      maxTokens: 2500,
+    }
+  );
 
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('LLM returned invalid adaptive quiz JSON');
@@ -145,10 +207,14 @@ async function generateMicroSummary(missedChunks) {
 
   return chat([
     { role: 'system', content: prompt },
-    { role: 'user', content: `Material:\n${context}` }
+    { role: 'user', content: `Material:\n${context}` },
   ]);
 }
 
-module.exports = { chat, generateAnswer, generateQuiz, generateAllAdaptiveQuestions, generateMicroSummary };
-
-
+module.exports = {
+  chat,
+  generateAnswer,
+  generateQuiz,
+  generateAllAdaptiveQuestions,
+  generateMicroSummary,
+};
