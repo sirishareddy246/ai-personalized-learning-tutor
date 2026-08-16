@@ -20,7 +20,7 @@ export default function Quiz() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [quizMode, setQuizMode] = useState('level'); // 'level' | 'adaptive'
+  const [quizMode, setQuizMode] = useState('level');
 
   useEffect(() => {
     getDocuments()
@@ -65,79 +65,84 @@ export default function Quiz() {
   const answered = Object.keys(answers).length;
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '6rem 1.5rem 3rem' }}>
-      <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>Quiz 🧠</h1>
-      <p style={{ color: 'var(--muted)', marginBottom: '2rem' }}>
-        Learn and test your knowledge from your study material.
-      </p>
+    <div
+      className="fade-in"
+      style={{ maxWidth: '800px', margin: '0 auto', padding: '6rem 1.5rem 4rem' }}
+    >
+      {/* Page header */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h1
+          className="font-display"
+          style={{ fontSize: 'var(--text-2xl)', color: 'var(--text-primary)', marginBottom: '0.4rem' }}
+        >
+          Quiz
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+          Test your knowledge from your uploaded study materials.
+        </p>
+      </div>
 
-      {/* Toggle Switching Quiz Modes */}
+      {/* Mode toggle */}
       <div
         style={{
           display: 'flex',
-          gap: '0.5rem',
+          gap: '0.25rem',
           marginBottom: '2rem',
-          background: 'rgba(255,255,255,0.02)',
-          padding: '0.3rem',
-          borderRadius: '12px',
-          border: '1px solid var(--border)',
+          background: 'var(--bg-sunken)',
+          padding: '0.25rem',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-subtle)',
         }}
       >
-        <button
-          onClick={() => setQuizMode('level')}
-          style={{
-            flex: 1,
-            padding: '0.65rem',
-            borderRadius: '9px',
-            border: 'none',
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            transition: 'all 0.2s',
-            background: quizMode === 'level' ? 'var(--primary)' : 'transparent',
-            color: quizMode === 'level' ? 'white' : 'var(--muted)',
-            boxShadow: quizMode === 'level' ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none',
-          }}
-        >
-          📝 Level-Wise Quiz
-        </button>
-        <button
-          onClick={() => setQuizMode('adaptive')}
-          style={{
-            flex: 1,
-            padding: '0.65rem',
-            borderRadius: '9px',
-            border: 'none',
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            transition: 'all 0.2s',
-            background: quizMode === 'adaptive' ? 'var(--primary)' : 'transparent',
-            color: quizMode === 'adaptive' ? 'white' : 'var(--muted)',
-            boxShadow: quizMode === 'adaptive' ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none',
-          }}
-        >
-          ⚡ Adaptive AI Quiz
-        </button>
+        {[
+          { key: 'level', label: 'Level-wise' },
+          { key: 'adaptive', label: 'Adaptive' },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setQuizMode(key)}
+            style={{
+              flex: 1,
+              padding: '0.55rem',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              fontFamily: 'var(--font-body)',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: 'var(--text-sm)',
+              transition: 'background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard)',
+              background: quizMode === key ? 'var(--bg-surface-raised)' : 'transparent',
+              color: quizMode === key ? 'var(--accent)' : 'var(--text-secondary)',
+              boxShadow: quizMode === key ? 'var(--shadow-sm)' : 'none',
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
+      {/* ── ADAPTIVE MODE ── */}
       {quizMode === 'adaptive' ? (
         <AdaptiveQuizPanel documents={documents} defaultSelectedDoc={selectedDoc} />
       ) : (
         <div className="fade-in">
-          {/* Level-Wise Controls */}
+          {/* Level-wise controls */}
           <div
-            className="glass"
-            style={{ padding: '1.5rem', marginBottom: '1.5rem', display: 'grid', gap: '1rem' }}
+            style={{
+              padding: '1.5rem',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1.5rem',
+              display: 'grid',
+              gap: '1rem',
+            }}
           >
+            {/* Document */}
             <div>
               <label
-                style={{
-                  display: 'block',
-                  fontWeight: 600,
-                  marginBottom: '0.4rem',
-                  fontSize: '0.9rem',
-                }}
+                htmlFor="quiz-doc-select"
+                style={{ display: 'block', fontWeight: 500, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}
               >
                 Document
               </label>
@@ -149,36 +154,44 @@ export default function Quiz() {
               >
                 <option value="">— Choose a document —</option>
                 {documents.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.filename}
-                  </option>
+                  <option key={d.id} value={d.id}>{d.filename}</option>
                 ))}
               </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {/* Difficulty */}
               <div>
                 <label
-                  style={{
-                    display: 'block',
-                    fontWeight: 600,
-                    marginBottom: '0.4rem',
-                    fontSize: '0.9rem',
-                  }}
+                  style={{ display: 'block', fontWeight: 500, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}
                 >
                   Difficulty
                 </label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.375rem' }}>
                   {DIFFICULTIES.map((d) => (
                     <button
                       key={d}
                       onClick={() => setDifficulty(d)}
-                      className={difficulty === d ? 'badge badge-' + d : 'btn-secondary'}
                       style={{
                         flex: 1,
+                        padding: '0.45rem 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        border: difficulty === d ? 'none' : '1px solid var(--border-default)',
+                        fontFamily: 'var(--font-body)',
+                        fontWeight: 500,
+                        fontSize: 'var(--text-xs)',
                         textTransform: 'capitalize',
-                        fontSize: '0.85rem',
-                        padding: difficulty === d ? '0.45rem' : '0.45rem',
+                        cursor: 'pointer',
+                        transition: 'all var(--duration-fast) var(--ease-standard)',
+                        ...(difficulty === d
+                          ? {
+                              background: d === 'easy' ? 'var(--success-subtle)' : d === 'hard' ? 'var(--error-subtle)' : 'rgba(199,154,60,0.12)',
+                              color: d === 'easy' ? 'var(--success)' : d === 'hard' ? 'var(--error)' : 'var(--warning)',
+                            }
+                          : {
+                              background: 'transparent',
+                              color: 'var(--text-secondary)',
+                            }),
                       }}
                     >
                       {d}
@@ -186,14 +199,11 @@ export default function Quiz() {
                   ))}
                 </div>
               </div>
+
+              {/* Question count */}
               <div>
                 <label
-                  style={{
-                    display: 'block',
-                    fontWeight: 600,
-                    marginBottom: '0.4rem',
-                    fontSize: '0.9rem',
-                  }}
+                  style={{ display: 'block', fontWeight: 500, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}
                 >
                   Questions: {numQ}
                 </label>
@@ -203,7 +213,7 @@ export default function Quiz() {
                   max={10}
                   value={numQ}
                   onChange={(e) => setNumQ(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: 'var(--primary)', marginTop: '0.5rem' }}
+                  style={{ width: '100%', accentColor: 'var(--accent)', marginTop: '0.5rem' }}
                 />
               </div>
             </div>
@@ -215,22 +225,46 @@ export default function Quiz() {
               disabled={loading || !selectedDoc}
             >
               {loading ? (
-                <>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                   <span className="spinner" /> Generating…
-                </>
+                </span>
               ) : (
-                '✨ Generate Quiz'
+                'Generate quiz'
               )}
             </button>
           </div>
 
+          {/* AI generating state */}
+          {loading && (
+            <div
+              className="fade-in-fast"
+              style={{
+                padding: '2rem',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <div className="thinking-dots"><span /><span /><span /></div>
+              <span
+                className="font-display"
+                style={{ fontStyle: 'italic', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}
+              >
+                Building your quiz…
+              </span>
+            </div>
+          )}
+
           {error && (
-            <p style={{ color: '#ef4444', marginBottom: '1rem', fontSize: '0.85rem' }}>
+            <p style={{ color: 'var(--error)', marginBottom: '1rem', fontSize: 'var(--text-sm)' }}>
               ⚠ {error}
             </p>
           )}
 
-          {/* Questions */}
+          {/* Active quiz */}
           {quiz && !result && (
             <div className="fade-in">
               <div
@@ -238,16 +272,15 @@ export default function Quiz() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  marginBottom: '1rem',
+                  marginBottom: '1.25rem',
                 }}
               >
-                <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-                  {answered}/{quiz.length} answered
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>
+                  {answered} of {quiz.length} answered
                 </span>
-                <span className={`badge badge-${difficulty}`} style={{ textTransform: 'capitalize' }}>
-                  {difficulty}
-                </span>
+                <span className={`badge badge-${difficulty}`}>{difficulty}</span>
               </div>
+
               {quiz.map((q, i) => (
                 <QuizCard
                   key={q.id}
@@ -258,30 +291,25 @@ export default function Quiz() {
                   revealed={false}
                 />
               ))}
+
               <button
                 id="submit-quiz-btn"
                 className="btn-primary"
-                style={{ width: '100%', marginTop: '0.5rem', fontSize: '1rem', padding: '0.9rem' }}
+                style={{ width: '100%', marginTop: '0.75rem' }}
                 onClick={handleSubmit}
                 disabled={submitting || answered < quiz.length}
               >
                 {submitting ? (
-                  <>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                     <span className="spinner" /> Submitting…
-                  </>
+                  </span>
                 ) : (
-                  'Submit Quiz →'
+                  'Submit quiz'
                 )}
               </button>
+
               {answered < quiz.length && (
-                <p
-                  style={{
-                    color: 'var(--muted)',
-                    textAlign: 'center',
-                    fontSize: '0.82rem',
-                    marginTop: '0.5rem',
-                  }}
-                >
+                <p style={{ color: 'var(--text-tertiary)', textAlign: 'center', fontSize: 'var(--text-xs)', marginTop: '0.5rem' }}>
                   Answer all {quiz.length} questions to submit.
                 </p>
               )}
@@ -291,8 +319,16 @@ export default function Quiz() {
           {/* Results */}
           {quiz && result && (
             <div className="fade-in">
-              <h2 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '0.5rem' }}>
-                Review Answers
+              <h2
+                className="font-display"
+                style={{
+                  fontSize: 'var(--text-xl)',
+                  color: 'var(--text-primary)',
+                  marginBottom: '1rem',
+                  fontStyle: 'italic',
+                }}
+              >
+                Here's how you did.
               </h2>
               {quiz.map((q, i) => (
                 <QuizCard
@@ -308,13 +344,9 @@ export default function Quiz() {
               <button
                 className="btn-secondary"
                 style={{ width: '100%', marginTop: '1.5rem' }}
-                onClick={() => {
-                  setQuiz(null);
-                  setResult(null);
-                  setAnswers({});
-                }}
+                onClick={() => { setQuiz(null); setResult(null); setAnswers({}); }}
               >
-                Take Another Quiz
+                Take another quiz
               </button>
             </div>
           )}

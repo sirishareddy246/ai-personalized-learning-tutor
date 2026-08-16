@@ -6,6 +6,7 @@ export default function FileUpload({ onUploadSuccess }) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
+  const [accepted, setAccepted] = useState(null);
   const inputRef = useRef();
 
   const handleFile = async (file) => {
@@ -16,12 +17,14 @@ export default function FileUpload({ onUploadSuccess }) {
       return;
     }
     setError('');
+    setAccepted(null);
     setUploading(true);
     setProgress(0);
     try {
       const fd = new FormData();
       fd.append('file', file);
       const { data } = await uploadDocument(fd, setProgress);
+      setAccepted(file.name);
       onUploadSuccess && onUploadSuccess(data);
     } catch (err) {
       setError(err.response?.data?.error || 'Upload failed. Please try again.');
@@ -39,49 +42,151 @@ export default function FileUpload({ onUploadSuccess }) {
 
   return (
     <div>
+      {/* Dropzone */}
       <div
-        className="glass cursor-pointer transition-all duration-300"
-        style={{
-          padding: '2.5rem',
-          textAlign: 'center',
-          border: dragging ? '2px dashed #6366f1' : '2px dashed rgba(255,255,255,0.1)',
-          background: dragging ? 'rgba(99,102,241,0.06)' : undefined,
-          borderRadius: '16px',
-        }}
         onClick={() => inputRef.current.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
+        style={{
+          padding: '3rem 2rem',
+          textAlign: 'center',
+          borderRadius: 'var(--radius-lg)',
+          border: dragging
+            ? '2px solid var(--accent)'
+            : accepted
+            ? '2px solid var(--success)'
+            : '2px dashed var(--border-default)',
+          background: dragging
+            ? 'var(--accent-subtle)'
+            : accepted
+            ? 'var(--success-subtle)'
+            : 'var(--bg-surface)',
+          cursor: 'pointer',
+          transition:
+            'border-color var(--duration-base) var(--ease-standard), background-color var(--duration-base) var(--ease-standard)',
+        }}
       >
-        <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📄</div>
-        <p className="font-semibold" style={{ color: 'var(--text)', marginBottom: '0.35rem' }}>
-          Drop your study material here
-        </p>
-        <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-          PDF, DOCX, PPTX — up to 50MB
-        </p>
+        {/* Icon */}
+        <div
+          style={{
+            marginBottom: '1rem',
+            transition: 'transform var(--duration-base) var(--ease-out)',
+            transform: dragging ? 'translateY(-2px)' : 'none',
+          }}
+        >
+          {accepted ? (
+            /* Success checkmark SVG */
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="20" cy="20" r="19" stroke="var(--success)" strokeWidth="1.5" fill="var(--success-subtle)" />
+              <path
+                className="check-draw"
+                d="M12 20.5 L17.5 26 L28 14"
+                stroke="var(--success)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </svg>
+          ) : (
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="6" width="24" height="28" rx="3" stroke="var(--text-tertiary)" strokeWidth="1.5" fill="none" />
+              <path d="M14 16 H26 M14 21 H22" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M20 29 L20 33 M17 31 L20 34 L23 31" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+
+        {accepted ? (
+          <>
+            <p style={{ fontWeight: 600, color: 'var(--success)', marginBottom: '0.25rem' }}>
+              {accepted}
+            </p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)' }}>
+              File accepted — processing complete
+            </p>
+          </>
+        ) : (
+          <>
+            <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+              Drop your study material here
+            </p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)' }}>
+              PDF, DOCX, PPTX — up to 50MB
+            </p>
+          </>
+        )}
+
         <input
           ref={inputRef}
           type="file"
           accept=".pdf,.docx,.pptx"
-          className="hidden"
+          style={{ display: 'none' }}
           onChange={(e) => handleFile(e.target.files[0])}
         />
       </div>
 
+      {/* AI-processing state */}
       {uploading && (
-        <div style={{ marginTop: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.8rem', color: 'var(--muted)' }}>
-            <span>Processing document…</span><span>{progress}%</span>
+        <div
+          className="fade-in-fast"
+          style={{
+            marginTop: '1.25rem',
+            padding: '1.25rem',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-md)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          }}
+        >
+          <div className="thinking-dots" aria-label="Processing">
+            <span /><span /><span />
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '999px', height: '6px', overflow: 'hidden' }}>
-            <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg,#6366f1,#8b5cf6)', borderRadius: '999px', transition: 'width 0.3s ease' }} />
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+            Reading your document…
+          </span>
+          {/* Thin progress bar */}
+          <div
+            style={{
+              flex: 1,
+              height: '2px',
+              background: 'var(--border-subtle)',
+              borderRadius: 'var(--radius-full)',
+              overflow: 'hidden',
+              marginLeft: 'auto',
+            }}
+          >
+            <div
+              className="progress-shimmer"
+              style={{
+                height: '100%',
+                width: progress > 0 ? `${progress}%` : '40%',
+                borderRadius: 'var(--radius-full)',
+                transition: 'width 0.3s ease',
+              }}
+            />
           </div>
         </div>
       )}
 
+      {/* Error */}
       {error && (
-        <p style={{ color: '#ef4444', marginTop: '0.75rem', fontSize: '0.85rem' }}>⚠ {error}</p>
+        <p
+          className="fade-in-fast"
+          style={{
+            color: 'var(--error)',
+            marginTop: '0.75rem',
+            fontSize: 'var(--text-sm)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+          }}
+        >
+          <span>⚠</span> {error}
+        </p>
       )}
     </div>
   );

@@ -2,11 +2,39 @@ export default function QuizCard({ question, index, selected, onSelect, revealed
   const letters = ['A', 'B', 'C', 'D'];
 
   return (
-    <div className="glass fade-in" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
-      <p style={{ fontWeight: 600, marginBottom: '1rem', lineHeight: 1.5 }}>
-        <span style={{ color: 'var(--accent)', marginRight: '0.5rem' }}>Q{index + 1}.</span>
+    <div
+      style={{
+        padding: '1.5rem',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-md)',
+        marginBottom: '0.75rem',
+      }}
+    >
+      {/* Question stem */}
+      <p
+        style={{
+          fontWeight: 500,
+          fontSize: 'var(--text-lg)',
+          color: 'var(--text-primary)',
+          lineHeight: 'var(--leading-normal)',
+          marginBottom: '1.25rem',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 'var(--text-sm)',
+            fontWeight: 600,
+            color: 'var(--accent)',
+            marginRight: '0.5rem',
+          }}
+        >
+          {index + 1}.
+        </span>
         {question.question}
       </p>
+
+      {/* Options */}
       <div style={{ display: 'grid', gap: '0.5rem' }}>
         {question.options.map((opt, i) => {
           const letter = letters[i];
@@ -15,34 +43,59 @@ export default function QuizCard({ question, index, selected, onSelect, revealed
           const isCorrect = revealed && letter === correctAnswer;
           const isWrong = revealed && isSelected && letter !== correctAnswer;
 
+          let extraClass = '';
+          if (isCorrect) extraClass = 'correct';
+          else if (isWrong) extraClass = 'incorrect';
+          else if (isSelected) extraClass = 'selected';
+
           return (
             <button
               key={i}
+              className={`quiz-option ${extraClass}`}
               onClick={() => !revealed && onSelect(letter)}
-              style={{
-                textAlign: 'left',
-                padding: '0.75rem 1rem',
-                borderRadius: '10px',
-                border: '1px solid',
-                cursor: revealed ? 'default' : 'pointer',
-                transition: 'all 0.2s',
-                fontSize: '0.9rem',
-                borderColor: isCorrect ? '#10b981' : isWrong ? '#ef4444' : isSelected ? '#6366f1' : 'rgba(255,255,255,0.08)',
-                background: isCorrect ? 'rgba(16,185,129,0.12)' : isWrong ? 'rgba(239,68,68,0.12)' : isSelected ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.03)',
-                color: isCorrect ? '#10b981' : isWrong ? '#ef4444' : 'var(--text)',
-              }}
+              disabled={revealed}
+              style={{ cursor: revealed ? 'default' : 'pointer' }}
             >
-              <span style={{ fontWeight: 700, marginRight: '0.5rem' }}>{letter})</span>
-              {opt.replace(/^[A-D]\)\s*/, '')}
+              <span
+                style={{
+                  flexShrink: 0,
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  border: `1.5px solid ${
+                    isCorrect
+                      ? 'var(--success)'
+                      : isWrong
+                      ? 'var(--error)'
+                      : isSelected
+                      ? 'var(--accent)'
+                      : 'var(--border-default)'
+                  }`,
+                  background: isCorrect
+                    ? 'var(--success)'
+                    : isWrong
+                    ? 'var(--error)'
+                    : isSelected
+                    ? 'var(--accent)'
+                    : 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: isCorrect || isWrong || isSelected ? '#fff' : 'var(--text-tertiary)',
+                  transition: 'all var(--duration-fast) var(--ease-standard)',
+                }}
+              >
+                {letter}
+              </span>
+              <span style={{ color: isCorrect ? 'var(--success)' : isWrong ? 'var(--error)' : 'var(--text-primary)' }}>
+                {opt.replace(/^[A-D]\)\s*/, '')}
+              </span>
             </button>
           );
         })}
       </div>
-      {revealed && question.explanation && (
-        <div className="fade-in" style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(99,102,241,0.07)', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--muted)', lineHeight: 1.6 }}>
-          💡 {question.explanation}
-        </div>
-      )}
     </div>
   );
 }

@@ -16,13 +16,45 @@ export default function Ask() {
   }, []);
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '6rem 1.5rem 3rem' }}>
-      <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>Ask AI 🤖</h1>
-      <p style={{ color: 'var(--muted)', marginBottom: '2rem' }}>Ask any question from your uploaded documents.</p>
+    <div
+      className="fade-in"
+      style={{ maxWidth: '780px', margin: '0 auto', padding: '6rem 1.5rem 4rem' }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h1
+          className="font-display"
+          style={{ fontSize: 'var(--text-2xl)', color: 'var(--text-primary)', marginBottom: '0.4rem' }}
+        >
+          Ask AI
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+          Ask any question from your uploaded documents.
+        </p>
+      </div>
 
       {/* Document selector */}
-      <div className="glass" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem' }}>Select Document</label>
+      <div
+        style={{
+          padding: '1.25rem',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: '1.5rem',
+        }}
+      >
+        <label
+          htmlFor="doc-select"
+          style={{
+            display: 'block',
+            fontWeight: 500,
+            fontSize: 'var(--text-sm)',
+            color: 'var(--text-secondary)',
+            marginBottom: '0.5rem',
+          }}
+        >
+          Document
+        </label>
         <select
           id="doc-select"
           className="input"
@@ -36,8 +68,11 @@ export default function Ask() {
           ))}
         </select>
         {documents.length === 0 && (
-          <p style={{ color: 'var(--muted)', fontSize: '0.82rem', marginTop: '0.5rem' }}>
-            No documents found. <a href="/dashboard" style={{ color: 'var(--primary)' }}>Upload one first.</a>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)', marginTop: '0.5rem' }}>
+            No documents found.{' '}
+            <a href="/dashboard" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>
+              Upload one first.
+            </a>
           </p>
         )}
       </div>

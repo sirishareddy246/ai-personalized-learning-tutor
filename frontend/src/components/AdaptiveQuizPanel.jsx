@@ -16,23 +16,17 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
     resetQuiz,
   } = useAdaptiveQuiz(selectedDoc);
 
-  // Coordinating local state so we don't flash/refresh questions instantly
-  // when the user completes a batch. This allows them to read explanations
-  // and remediation summaries before proceeding.
   const [displayedQuestions, setDisplayedQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
-  const [submittedAnswers, setSubmittedAnswers] = useState({}); // questionId -> boolean
-  const [submittingQ, setSubmittingQ] = useState({}); // questionId -> boolean
-  const [answersFeedback, setAnswersFeedback] = useState({}); // questionId -> { isCorrect, explanation }
-  const [transitionData, setTransitionData] = useState(null); // null | { status, level, summary, feedback }
+  const [submittedAnswers, setSubmittedAnswers] = useState({});
+  const [submittingQ, setSubmittingQ] = useState({});
+  const [answersFeedback, setAnswersFeedback] = useState({});
+  const [transitionData, setTransitionData] = useState(null);
 
   useEffect(() => {
-    if (defaultSelectedDoc) {
-      setSelectedDoc(defaultSelectedDoc);
-    }
+    if (defaultSelectedDoc) setSelectedDoc(defaultSelectedDoc);
   }, [defaultSelectedDoc]);
 
-  // When hook loads the first batch
   useEffect(() => {
     if (status === 'active' && questions.length > 0 && displayedQuestions.length === 0) {
       setDisplayedQuestions(questions);
@@ -41,7 +35,6 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
 
   const handleStart = async () => {
     if (!selectedDoc) return;
-    // Clear all states
     setDisplayedQuestions([]);
     setAnswers({});
     setSubmittedAnswers({});
@@ -59,30 +52,18 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
   const handleSubmitQuestion = async (questionId) => {
     const selectedAnswer = answers[questionId];
     if (!selectedAnswer || submittedAnswers[questionId]) return;
-
     setSubmittingQ((prev) => ({ ...prev, [questionId]: true }));
     try {
       const res = await submitAnswer(questionId, selectedAnswer);
-
-      // Save feedback for this question
       setAnswersFeedback((prev) => ({
         ...prev,
         [questionId]: {
-          isCorrect: res.isCorrect ?? (res.status !== 'in_progress' ? false : false),
+          isCorrect: res.isCorrect ?? false,
           explanation: res.explanation || '',
         },
       }));
       setSubmittedAnswers((prev) => ({ ...prev, [questionId]: true }));
-
-      // If this submission triggers a batch transition (advanced, demoted, remediation, ended)
       if (res.status && res.status !== 'in_progress') {
-        // Find if any correct/incorrect was returned on the final evaluate call
-        // Note: the submitAnswer endpoint will evaluate on the 3rd question.
-        // We need to make sure the final question gets its isCorrect evaluation.
-        // The API returns the evaluation result (isCorrect, explanation) or we can look it up.
-        // For the last question, we should evaluate correct/incorrect locally if we know it.
-        // Wait, the API returns the result, and if it's evaluated, it might have ended/advanced.
-        // Let's set transition details.
         setTransitionData(res);
       }
     } catch (err) {
@@ -93,9 +74,7 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
   };
 
   const handleContinue = () => {
-    // Load new questions from the hook into display state
     setDisplayedQuestions(questions);
-    // Clear batch responses
     setAnswers({});
     setSubmittedAnswers({});
     setAnswersFeedback({});
@@ -106,43 +85,55 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
     displayedQuestions.length > 0 &&
     displayedQuestions.every((q) => submittedAnswers[q.id]);
 
+  /* ── IDLE STATE ── */
   if (status === 'idle') {
     return (
       <div className="fade-in">
         <div
-          className="glass"
-          style={{ padding: '2rem', textAlign: 'center', marginBottom: '2rem' }}
+          style={{
+            padding: '2.5rem 2rem',
+            textAlign: 'center',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-lg)',
+            marginBottom: '1.5rem',
+          }}
         >
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🎯</div>
           <h2
-            style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}
+            className="font-display"
+            style={{
+              fontSize: 'var(--text-xl)',
+              color: 'var(--text-primary)',
+              marginBottom: '0.75rem',
+            }}
           >
-            Adaptive AI Quiz Mode
+            Adaptive Quiz
           </h2>
           <p
             style={{
-              color: 'var(--muted)',
-              fontSize: '0.95rem',
-              lineHeight: 1.6,
-              maxWidth: '500px',
-              margin: '0 auto 1.5rem',
+              color: 'var(--text-secondary)',
+              fontSize: 'var(--text-sm)',
+              lineHeight: 'var(--leading-normal)',
+              maxWidth: '480px',
+              margin: '0 auto 1.75rem',
             }}
           >
-            Test your knowledge dynamically! The AI adjusts the difficulty based on
-            your answers. Meet passing marks to level up, or receive custom micro-summaries
-            on weak concepts if you struggle.
+            The tutor adjusts difficulty based on your answers — starting Easy, advancing
+            to Medium then Hard when you score 2 out of 3 or better. Struggle at Easy?
+            You'll receive a personalised micro-summary before retrying.
           </p>
 
-          <div style={{ textAlign: 'left', maxWidth: '400px', margin: '0 auto 2rem' }}>
+          <div style={{ textAlign: 'left', maxWidth: '360px', margin: '0 auto 1.75rem' }}>
             <label
               style={{
                 display: 'block',
-                fontWeight: 600,
+                fontWeight: 500,
+                fontSize: 'var(--text-sm)',
+                color: 'var(--text-secondary)',
                 marginBottom: '0.4rem',
-                fontSize: '0.9rem',
               }}
             >
-              Select Document
+              Document
             </label>
             <select
               className="input"
@@ -151,78 +142,101 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
             >
               <option value="">— Choose a document —</option>
               {documents.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.filename}
-                </option>
+                <option key={d.id} value={d.id}>{d.filename}</option>
               ))}
             </select>
           </div>
 
           <button
             className="btn-primary"
-            style={{ width: '100%', maxWidth: '300px' }}
+            style={{ minWidth: '200px' }}
             onClick={handleStart}
             disabled={!selectedDoc}
           >
-            🚀 Start Adaptive Quiz
+            Begin quiz
           </button>
         </div>
 
-        {/* Feature info */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <div className="glass" style={{ padding: '1.25rem' }}>
-            <h4 style={{ fontWeight: 700, marginBottom: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-              <span>📈</span> Level Up Progression
-            </h4>
-            <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>
-              Start at **Easy** difficulty. Scoring 2/3 (or better) in a batch of 3 questions
-              advances you to **Medium**, and subsequently to **Hard**.
-            </p>
-          </div>
-          <div className="glass" style={{ padding: '1.25rem' }}>
-            <h4 style={{ fontWeight: 700, marginBottom: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-              <span>📖</span> AI Micro-Remediation
-            </h4>
-            <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>
-              If you struggle with the Easy level, the tutor generates an AI micro-summary
-              focused strictly on the concepts you missed so you can review and retry.
-            </p>
-          </div>
+        {/* Info cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
+          {[
+            {
+              title: 'Level progression',
+              body: 'Score 2/3 on Easy to advance to Medium, then Hard. Each level tests deeper understanding.',
+            },
+            {
+              title: 'AI remediation',
+              body: 'Stuck on Easy? The tutor generates a focused micro-summary on the concepts you missed.',
+            },
+          ].map((card) => (
+            <div
+              key={card.title}
+              className="glass"
+              style={{ padding: '1.25rem' }}
+            >
+              <h4
+                style={{
+                  fontWeight: 600,
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--text-primary)',
+                  marginBottom: '0.4rem',
+                }}
+              >
+                {card.title}
+              </h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', lineHeight: 'var(--leading-normal)' }}>
+                {card.body}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
+  /* ── ENDED STATE ── */
   if (status === 'ended') {
     const finalReport = feedback || {};
     const { highestLevelReached = 'easy', scoreByLevel = {}, weakTopics = [] } = finalReport;
 
+    const levelColor =
+      highestLevelReached === 'hard'
+        ? 'var(--error)'
+        : highestLevelReached === 'medium'
+        ? 'var(--warning)'
+        : 'var(--success)';
+
     return (
       <div className="fade-in">
+        {/* Summary hero */}
         <div
-          className="glass pulse-glow"
           style={{
             padding: '2.5rem 2rem',
             textAlign: 'center',
-            marginBottom: '1.5rem',
-            background: 'linear-gradient(135deg, rgba(99,102,241,0.05), rgba(139,92,246,0.05))',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-lg)',
+            marginBottom: '1.25rem',
           }}
         >
-          <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🏆</div>
-          <h2
+          <p
+            className="font-display"
             style={{
-              fontSize: '1.75rem',
-              fontWeight: 800,
+              fontSize: 'var(--text-xl)',
+              color: 'var(--text-primary)',
               marginBottom: '0.5rem',
-              background: 'linear-gradient(135deg, #a78bfa, #f472b6)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
             }}
           >
-            Adaptive Quiz Completed
-          </h2>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-            Here is your personalized learning tutor report.
+            Quiz complete
+          </p>
+          <p
+            style={{
+              color: 'var(--text-secondary)',
+              fontSize: 'var(--text-sm)',
+              marginBottom: '1.5rem',
+            }}
+          >
+            Here's your personalised learning report.
           </p>
 
           <div
@@ -231,26 +245,30 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
               flexDirection: 'column',
               alignItems: 'center',
               padding: '1rem 2rem',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid var(--border)',
-              borderRadius: '12px',
+              background: 'var(--bg-sunken)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
             }}
           >
-            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '1px' }}>
-              Highest Mastery Level
-            </span>
             <span
               style={{
-                fontSize: '2rem',
-                fontWeight: 800,
-                color:
-                  highestLevelReached === 'hard'
-                    ? '#8b5cf6'
-                    : highestLevelReached === 'medium'
-                    ? '#f59e0b'
-                    : '#10b981',
+                fontSize: 'var(--text-xs)',
                 textTransform: 'uppercase',
-                marginTop: '0.25rem',
+                letterSpacing: '0.06em',
+                color: 'var(--text-tertiary)',
+                marginBottom: '0.35rem',
+              }}
+            >
+              Highest mastery level
+            </span>
+            <span
+              className="badge"
+              style={{
+                fontSize: '1rem',
+                padding: '0.35rem 1rem',
+                background: `${levelColor}15`,
+                border: `1px solid ${levelColor}40`,
+                color: levelColor,
               }}
             >
               {highestLevelReached}
@@ -258,12 +276,27 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
           </div>
         </div>
 
-        {/* Scores per Level */}
-        <div className="glass" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '1rem' }}>
-            📊 Score Breakdown By Level
+        {/* Score by level */}
+        <div
+          style={{
+            padding: '1.25rem',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '1rem',
+          }}
+        >
+          <h3
+            style={{
+              fontWeight: 600,
+              fontSize: 'var(--text-sm)',
+              color: 'var(--text-primary)',
+              marginBottom: '1rem',
+            }}
+          >
+            Score breakdown
           </h3>
-          <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gap: '0.5rem' }}>
             {['easy', 'medium', 'hard'].map((lvl) => {
               const score = scoreByLevel[lvl];
               const attempted = !!score;
@@ -275,55 +308,66 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '0.75rem 1rem',
-                    borderRadius: '10px',
-                    background: attempted ? 'rgba(255,255,255,0.02)' : 'transparent',
-                    border: '1px solid',
-                    borderColor: attempted ? 'var(--border)' : 'rgba(255,255,255,0.03)',
-                    opacity: attempted ? 1 : 0.4,
+                    borderRadius: 'var(--radius-sm)',
+                    background: attempted ? 'var(--bg-sunken)' : 'transparent',
+                    border: '1px solid var(--border-subtle)',
+                    opacity: attempted ? 1 : 0.45,
                   }}
                 >
-                  <span style={{ textTransform: 'capitalize', fontWeight: 600, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span className={`badge badge-${lvl}`}>{lvl}</span>
-                  </span>
-                  <span>
-                    {attempted ? (
-                      <strong style={{ color: 'var(--text)' }}>
-                        {score.correct} / {score.total} correct (
-                        {Math.round((score.correct / score.total) * 100)}%)
-                      </strong>
-                    ) : (
-                      <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Not Attempted</span>
-                    )}
-                  </span>
+                  <span className={`badge badge-${lvl}`}>{lvl}</span>
+                  {attempted ? (
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', fontWeight: 500 }}>
+                      {score.correct} / {score.total} ({Math.round((score.correct / score.total) * 100)}%)
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>Not attempted</span>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Weak Topics / Areas to Review */}
+        {/* Weak topics */}
         {weakTopics && weakTopics.length > 0 && (
-          <div className="glass" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-            <h3 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '1rem', color: '#f87171' }}>
-              📖 Suggested Sections to Revisit
+          <div
+            style={{
+              padding: '1.25rem',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1rem',
+            }}
+          >
+            <h3
+              style={{
+                fontWeight: 600,
+                fontSize: 'var(--text-sm)',
+                color: 'var(--text-primary)',
+                marginBottom: '0.75rem',
+              }}
+            >
+              Sections to revisit
             </h3>
-            <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
               {weakTopics.map((topic, index) => (
                 <div
                   key={topic.id}
                   style={{
                     padding: '1rem',
-                    borderRadius: '10px',
-                    background: 'rgba(239,68,68,0.03)',
-                    borderLeft: '4px solid #ef4444',
-                    fontSize: '0.9rem',
-                    lineHeight: 1.5,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--error-subtle)',
+                    borderLeft: '3px solid var(--error)',
+                    fontSize: 'var(--text-sm)',
+                    lineHeight: 'var(--leading-normal)',
                   }}
                 >
-                  <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text)' }}>
-                    Reference Material Chunk #{index + 1}
+                  <div
+                    style={{ fontWeight: 500, marginBottom: '0.35rem', color: 'var(--text-primary)' }}
+                  >
+                    Reference passage {index + 1}
                   </div>
-                  <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: 0 }}>
+                  <p style={{ color: 'var(--text-secondary)', margin: 0, fontStyle: 'italic' }}>
                     "{topic.content}"
                   </p>
                 </div>
@@ -332,172 +376,218 @@ export default function AdaptiveQuizPanel({ documents, defaultSelectedDoc }) {
           </div>
         )}
 
-        <button className="btn-primary" style={{ width: '100%' }} onClick={resetQuiz}>
-          🔄 Start Another Quiz Session
+        <button
+          className="btn-primary"
+          style={{ width: '100%' }}
+          onClick={resetQuiz}
+        >
+          Start another session
         </button>
       </div>
     );
   }
 
+  /* ── ACTIVE QUIZ STATE ── */
   return (
     <div className="fade-in">
-      {/* Batch Header */}
+      {/* Batch header */}
       <div
-        className="glass"
         style={{
-          padding: '1rem 1.5rem',
+          padding: '0.875rem 1.25rem',
           marginBottom: '1.5rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-md)',
         }}
       >
-        <div>
-          <span style={{ color: 'var(--muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>
-            Current Level
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span
+            style={{
+              fontSize: 'var(--text-xs)',
+              color: 'var(--text-tertiary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Difficulty
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.1rem' }}>
-            <span className={`badge badge-${level}`} style={{ fontSize: '1rem', padding: '0.3rem 0.8rem' }}>
-              {level}
-            </span>
-          </div>
+          <span className={`badge badge-${level}`}>{level}</span>
         </div>
 
-        <button className="btn-secondary" style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }} onClick={exitQuiz}>
-          ⏹ Exit Quiz
+        <button
+          className="btn-secondary"
+          style={{ fontSize: 'var(--text-xs)', padding: '0.35rem 0.875rem' }}
+          onClick={exitQuiz}
+        >
+          Exit
         </button>
       </div>
 
-      {/* Display Questions */}
+      {/* Questions */}
       {displayedQuestions.map((q, idx) => {
         const isSubmitted = !!submittedAnswers[q.id];
         const isSubmitting = !!submittingQ[q.id];
         const selected = answers[q.id] || '';
         const feedbackInfo = answersFeedback[q.id];
 
-        // Format question in the way QuizCard expects, ensuring compatible fields
-        const formattedQuestion = {
-          ...q,
-          correct_answer: q.correct_answer || '',
-        };
-
         return (
-          <div key={q.id} className="fade-in" style={{ marginBottom: '1.5rem' }}>
+          <div key={q.id} className="fade-in" style={{ marginBottom: '1.25rem', animationDelay: `${idx * 60}ms` }}>
             <QuizCard
-              question={formattedQuestion}
+              question={{ ...q, correct_answer: q.correct_answer || '' }}
               index={idx}
               selected={selected}
               onSelect={(opt) => handleOptionSelect(q.id, opt)}
               revealed={isSubmitted}
             />
 
+            {/* Submit button */}
             {!isSubmitted && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.625rem' }}>
                 <button
                   className="btn-primary"
-                  style={{ padding: '0.45rem 1.25rem', fontSize: '0.85rem' }}
+                  style={{ fontSize: 'var(--text-sm)', padding: '0.5rem 1.25rem' }}
                   onClick={() => handleSubmitQuestion(q.id)}
                   disabled={!selected || isSubmitting}
                 >
-                  {isSubmitting ? 'Checking...' : 'Submit Answer'}
+                  {isSubmitting ? <span className="spinner" /> : 'Submit answer'}
                 </button>
               </div>
             )}
 
+            {/* Per-question feedback */}
             {isSubmitted && feedbackInfo && (
               <div
+                className="fade-in-fast"
                 style={{
-                  marginTop: '-0.75rem',
-                  marginBottom: '1rem',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '10px',
-                  background: feedbackInfo.isCorrect ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-                  border: '1px solid',
-                  borderColor: feedbackInfo.isCorrect ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
-                  fontSize: '0.88rem',
-                  color: feedbackInfo.isCorrect ? '#10b981' : '#ef4444',
+                  marginTop: '0.75rem',
+                  padding: '0.875rem 1rem',
+                  borderRadius: 'var(--radius-sm)',
+                  background: feedbackInfo.isCorrect ? 'var(--success-subtle)' : 'var(--error-subtle)',
+                  border: `1px solid ${feedbackInfo.isCorrect ? 'rgba(106,138,95,0.35)' : 'rgba(194,84,63,0.35)'}`,
+                  fontSize: 'var(--text-sm)',
+                  color: feedbackInfo.isCorrect ? 'var(--success)' : 'var(--error)',
+                  lineHeight: 'var(--leading-normal)',
                 }}
               >
-                <strong>{feedbackInfo.isCorrect ? 'Correct! ' : 'Incorrect. '}</strong>
-                {feedbackInfo.explanation}
+                {/* Serif voice for the AI lede */}
+                <span className="font-display" style={{ fontStyle: 'italic' }}>
+                  {feedbackInfo.isCorrect ? 'Correct. ' : 'Not quite — '}
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }}>{feedbackInfo.explanation}</span>
               </div>
             )}
           </div>
         );
       })}
 
-      {/* Batch Transition Alerts & Navigation */}
+      {/* Batch transition panel */}
       {isBatchDone && transitionData && (
-        <div className="glass fade-in" style={{ padding: '1.5rem', marginTop: '2rem', border: '1px solid var(--primary)' }}>
+        <div
+          className="glass fade-in"
+          style={{
+            padding: '1.5rem',
+            marginTop: '1.5rem',
+            borderColor: 'var(--accent)',
+          }}
+        >
           {transitionData.status === 'remediation' && (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{ fontSize: '1.25rem' }}>📖</span>
-                <h4 style={{ fontWeight: 800, margin: 0, color: 'var(--accent)' }}>
-                  AI Tutor Remediation Summary
-                </h4>
-              </div>
+              <p
+                className="font-display"
+                style={{
+                  fontSize: 'var(--text-lg)',
+                  fontStyle: 'italic',
+                  color: 'var(--text-primary)',
+                  marginBottom: '0.875rem',
+                }}
+              >
+                Let's revisit a few concepts before continuing.
+              </p>
               <p
                 style={{
-                  color: 'var(--text)',
-                  fontSize: '0.92rem',
-                  lineHeight: 1.6,
+                  color: 'var(--text-secondary)',
+                  fontSize: 'var(--text-sm)',
+                  lineHeight: 'var(--leading-normal)',
                   padding: '1rem',
-                  background: 'rgba(255,255,255,0.02)',
-                  borderRadius: '8px',
-                  borderLeft: '4px solid var(--accent)',
-                  marginBottom: '1.5rem',
+                  background: 'var(--bg-sunken)',
+                  borderRadius: 'var(--radius-sm)',
+                  borderLeft: '3px solid var(--accent)',
+                  marginBottom: '1.25rem',
                 }}
               >
                 {transitionData.summary}
               </p>
               <button className="btn-primary" style={{ width: '100%' }} onClick={handleContinue}>
-                📚 Try Next Easy Batch
+                Try next batch
               </button>
             </div>
           )}
 
           {transitionData.status === 'advanced' && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🌟</div>
-              <h4 style={{ fontWeight: 800, fontSize: '1.15rem', color: '#10b981', marginBottom: '0.5rem' }}>
-                Advancing to {transitionData.level.toUpperCase()} Level!
-              </h4>
-              <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginBottom: '1.5rem' }}>
-                Great work! You scored {PASS_THRESHOLD * 100}% or higher in this level.
+              <p
+                className="font-display"
+                style={{
+                  fontSize: 'var(--text-lg)',
+                  color: 'var(--success)',
+                  fontStyle: 'italic',
+                  marginBottom: '0.5rem',
+                }}
+              >
+                Well done — moving to {transitionData.level} level.
+              </p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', marginBottom: '1.25rem' }}>
+                You cleared this batch. Next questions will be a step harder.
               </p>
               <button className="btn-primary" style={{ width: '100%' }} onClick={handleContinue}>
-                Next Level Questions →
+                Continue →
               </button>
             </div>
           )}
 
           {transitionData.status === 'demoted' && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⚠️</div>
-              <h4 style={{ fontWeight: 800, fontSize: '1.15rem', color: '#f59e0b', marginBottom: '0.5rem' }}>
-                Moving to {transitionData.level.toUpperCase()} Level
-              </h4>
-              <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginBottom: '1.5rem' }}>
-                The questions were a bit tricky. Let's move down a level to rebuild your foundations.
+              <p
+                className="font-display"
+                style={{
+                  fontSize: 'var(--text-lg)',
+                  color: 'var(--warning)',
+                  fontStyle: 'italic',
+                  marginBottom: '0.5rem',
+                }}
+              >
+                Those were tricky — stepping back a level.
+              </p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', marginBottom: '1.25rem' }}>
+                Rebuilding foundations before moving forward again.
               </p>
               <button className="btn-primary" style={{ width: '100%' }} onClick={handleContinue}>
-                Continue to Easy Level Batch →
+                Continue →
               </button>
             </div>
           )}
 
           {transitionData.status === 'ended' && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🏁</div>
-              <h4 style={{ fontWeight: 800, fontSize: '1.15rem', marginBottom: '0.5rem' }}>
-                Quiz Finished!
-              </h4>
-              <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginBottom: '1.5rem' }}>
-                You have finished all sections or hit the retry limits. Click below to view your personalized feedback report.
+              <p
+                className="font-display"
+                style={{
+                  fontSize: 'var(--text-lg)',
+                  color: 'var(--text-primary)',
+                  fontStyle: 'italic',
+                  marginBottom: '0.5rem',
+                }}
+              >
+                That's the quiz complete.
+              </p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', marginBottom: '1.25rem' }}>
+                View your full personalised feedback report below.
               </p>
               <button className="btn-primary" style={{ width: '100%' }} onClick={handleContinue}>
-                📊 View Final Feedback Report
+                View feedback report
               </button>
             </div>
           )}
