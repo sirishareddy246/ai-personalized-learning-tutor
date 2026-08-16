@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 const navLinks = [
   { to: '/dashboard', label: 'Dashboard' },
@@ -8,6 +9,17 @@ const navLinks = [
 
 export default function Navbar() {
   const { pathname } = useLocation();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+  };
 
   return (
     <nav
@@ -53,8 +65,8 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Nav links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        {/* Nav links & Auth controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {navLinks.map(({ to, label }) => {
             const active = pathname.startsWith(to);
             return (
@@ -69,13 +81,58 @@ export default function Navbar() {
                   textDecoration: 'none',
                   color: active ? 'var(--accent)' : 'var(--text-secondary)',
                   background: active ? 'var(--accent-subtle)' : 'transparent',
-                  transition: 'color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard)',
+                  transition:
+                    'color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard)',
                 }}
               >
                 {label}
               </Link>
             );
           })}
+
+          {/* User profile / Sign out / Sign in */}
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '0.5rem' }}>
+              <span
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--text-tertiary)',
+                  maxWidth: '140px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={user.email}
+              >
+                {user.email}
+              </span>
+              <button
+                onClick={handleSignOut}
+                className="btn-secondary"
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: 'var(--text-xs)',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="btn-primary"
+              style={{
+                marginLeft: '0.5rem',
+                padding: '0.4rem 0.9rem',
+                fontSize: 'var(--text-xs)',
+                borderRadius: 'var(--radius-sm)',
+                textDecoration: 'none',
+              }}
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
     </nav>
