@@ -1,8 +1,8 @@
 const axios = require('axios');
 const config = require('../config/config');
 
-const apiKey = config.grokApiKey || '';
-const isNvidia = apiKey.startsWith('nvapi-');
+const apiKey = (process.env.NVIDIA_API_KEY || config.grokApiKey || '').trim().replace(/^["']|["']$/g, '');
+const isNvidia = apiKey.startsWith('nvapi-') || !!process.env.NVIDIA_API_KEY;
 const isGroq = apiKey.startsWith('gsk_');
 
 let baseURL = 'https://api.x.ai/v1';
@@ -20,7 +20,7 @@ if (isNvidia) {
   fallbackModel = 'llama3-8b-8192';
   console.log('🤖 Using LLM Provider: Groq (llama-3.1-8b-instant)');
 } else {
-  console.log('🤖 Using LLM Provider: Groq (xAI)');
+  console.log('🤖 Using LLM Provider: Grok (xAI)');
 }
 
 const llmClient = axios.create({
