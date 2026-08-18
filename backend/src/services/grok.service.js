@@ -16,11 +16,11 @@ if (isNvidia) {
   console.log('🤖 Using LLM Provider: NVIDIA NIM API (meta/llama-3.1-8b-instruct)');
 } else if (isGroq) {
   baseURL = 'https://api.groq.com/openai/v1';
-  defaultModel = 'llama-3.3-70b-versatile';
-  fallbackModel = 'llama-3.1-8b-instant';
-  console.log('🤖 Using LLM Provider: Groq (llama-3.3-70b-versatile with llama-3.1-8b-instant fallback)');
+  defaultModel = 'llama-3.1-8b-instant';
+  fallbackModel = 'llama3-8b-8192';
+  console.log('🤖 Using LLM Provider: Groq (llama-3.1-8b-instant)');
 } else {
-  console.log('🤖 Using LLM Provider: Grok (xAI)');
+  console.log('🤖 Using LLM Provider: Groq (xAI)');
 }
 
 const llmClient = axios.create({
@@ -43,6 +43,8 @@ async function chat(messages, options = {}) {
     });
     return response.data.choices[0].message.content;
   } catch (err) {
+    const errMessage = err.response?.data?.error?.message || err.message || '';
+    const isModelError = errMessage.includes('does not exist') || errMessage.includes('access');
     const isRateLimit =
       err.response &&
       (err.response.status === 429 ||
@@ -51,9 +53,8 @@ async function chat(messages, options = {}) {
           (err.response.data.error.code === 'rate_limit_exceeded' ||
             err.response.data.error.type === 'tokens')));
 
-    if (isRateLimit) {
-      if (fallbackModel && modelToUse !== fallbackModel) {
-        console.warn(`⚠️ Rate limit hit on ${modelToUse}. Automatically falling back to ${fallbackModel}...`);
+    if ((isRateLimit || isModelError) && fallbackModel && modelToUse !== fallbackModel) {
+      console.warn(`⚠️ Error on ${modelToUse} (${errMessage}). Automatically falling back to ${fallbackModel}...`);
         try {
           const fallbackResponse = await llmClient.post('/chat/completions', {
             model: fallbackModel,
