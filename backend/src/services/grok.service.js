@@ -94,7 +94,7 @@ async function chat(messages, options = {}) {
     }
     throw err;
   }
-}
+
 
 async function generateAnswer(question, contextChunks) {
   const context = contextChunks.join('\n\n---\n\n');
