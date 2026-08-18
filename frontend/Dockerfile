@@ -13,8 +13,8 @@ RUN npm ci
 COPY . .
 
 # Accept build-time environment variables for Vite
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_SUPABASE_URL=https://krzrggxohqgawtlmduku.supabase.co
+ARG VITE_SUPABASE_ANON_KEY=sb_publishable_aUNBvroc6Fkfs2HvOCkb9g_ENKnt-ze
 
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
