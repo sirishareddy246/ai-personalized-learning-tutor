@@ -19,9 +19,10 @@ async function extractText(fileBuffer, mimetype, originalname) {
     if (!process.argv[1]) process.argv[1] = '';
     const officeParser = require('officeparser');
     return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('PPTX text extraction timed out. Please convert file to PDF or DOCX.')), 20000);
       officeParser.parseOfficeAsync(fileBuffer, { outputErrorToConsole: false })
-        .then(resolve)
-        .catch(reject);
+        .then((res) => { clearTimeout(timer); resolve(res); })
+        .catch((err) => { clearTimeout(timer); reject(err); });
     });
   }
 

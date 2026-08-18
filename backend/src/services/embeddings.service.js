@@ -18,12 +18,12 @@ async function generateEmbedding(text) {
 
 async function generateEmbeddings(texts) {
   const ext = await getExtractor();
-  const results = [];
-  for (const text of texts) {
-    const output = await ext(text, { pooling: 'mean', normalize: true });
-    results.push(Array.from(output.data));
-  }
-  return results;
+  return Promise.all(
+    texts.map(async (text) => {
+      const output = await ext(text, { pooling: 'mean', normalize: true });
+      return Array.from(output.data);
+    })
+  );
 }
 
 module.exports = { generateEmbedding, generateEmbeddings };
